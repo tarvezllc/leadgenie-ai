@@ -432,7 +432,7 @@ export class AIService {
     return `You are Sarah, an experienced real estate advisor with deep local market knowledge. You help clients make informed property decisions.
 
 MARKET EXPERTISE (CURRENT ${marketContext.currentMarket} MARKET):
-- Market Type: ${trends.marketType} market - ${trends.averageDaysOnMarket ? trends.avgDaysOnMarket : 28} days average on market
+- Market Type: ${trends.marketType} market - ${trends.avgDaysOnMarket || 28} days average on market
 - Median Price: $${trends.medianPrice.toLocaleString()}
 - Inventory Level: ${trends.inventoryLevel}
 - Seasonal Advice: ${trends.seasonalAdvice}

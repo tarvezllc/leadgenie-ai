@@ -4,6 +4,19 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Lead, Property, LeadInteraction } from '@/types';
 import ChatbotWidget from '@/components/ChatbotWidget';
+
+// Utility functions
+const formatNumberString = (numStr: string) => {
+  return new Intl.NumberFormat('en-US').format(parseInt(numStr));
+};
+
+const formatDate = (dateStr: string) => {
+  return new Date(dateStr).toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric', 
+    year: 'numeric' 
+  });
+};
 import { 
   Users, 
   Home, 
@@ -17,7 +30,17 @@ import {
   Search,
   Plus,
   Eye,
-  MessageSquare
+  MessageSquare,
+  Trash2,
+  Edit,
+  MoreVertical,
+  CheckCircle,
+  Clock,
+  Star,
+  Filter as FilterIcon,
+  Download,
+  Share2,
+  PhoneCall
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -33,6 +56,17 @@ export default function Dashboard() {
     closedWon: 0,
     totalValue: 0,
   });
+
+  // Enhanced CRM state
+  const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+  const [isEditingLead, setIsEditingLead] = useState(false);
+  const [editLeadData, setEditLeadData] = useState<Lead | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [leadToDelete, setLeadToDelete] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<string>('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Demo user ID - in production, this would come from authentication
   const userId = '550e8400-e29b-41d4-a716-446655440001';
@@ -148,6 +182,114 @@ export default function Dashboard() {
     }));
     console.log('✅ Dashboard: Lead added to state');
   };
+
+  // Enhanced CRM Functions
+  const handleDeleteLead = async (leadId: string) => {
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .delete()
+        .eq('id', leadId);
+
+      if (error) throw error;
+
+      setLeads(prev => prev.filter(lead => lead.id !== leadId));
+      setStats(prev => ({
+        ...prev,
+        totalLeads: prev.totalLeads - 1,
+        newLeads: Math.max(0, prev.newLeads - 1),
+      }));
+      setShowDeleteConfirm(false);
+      setLeadToDelete(null);
+    } catch (error) {
+      console.error('Error deleting lead:', error);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedLeads.length === 0) return;
+    
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .delete()
+        .in('id', selectedLeads);
+
+      if (error) throw error;
+
+      setLeads(prev => prev.filter(lead => !selectedLeads.includes(lead.id)));
+      setStats(prev => ({
+        ...prev,
+        totalLeads: prev.totalLeads - selectedLeads.length,
+        newLeads: Math.max(0, prev.newLeads - selectedLeads.length),
+      }));
+      setSelectedLeads([]);
+    } catch (error) {
+      console.error('Error bulk deleting leads:', error);
+    }
+  };
+
+  const handleUpdateLeadStatus = async (leadId: string, status: string) => {
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .update({ status: status as any, updated_at: new Date().toISOString() })
+        .eq('id', leadId);
+
+      if (error) throw error;
+
+      setLeads(prev => prev.map(lead => 
+        lead.id === leadId ? { ...lead, status: status as any } : lead
+      ));
+      
+      // Update stats
+      loadDashboardData();
+    } catch (error) {
+      console.error('Error updating lead status:', error);
+    }
+  };
+
+  const handleSelectLead = (leadId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedLeads(prev => [...prev, leadId]);
+    } else {
+      setSelectedLeads(prev => prev.filter(id => id !== leadId));
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedLeads.length === filteredLeads.length) {
+      setSelectedLeads([]);
+    } else {
+      setSelectedLeads(filteredLeads.map(lead => lead.id));
+    }
+  };
+
+  // Filter and sort leads
+  const filteredLeads = leads.filter(lead => {
+    const matchesSearch = searchQuery === '' || 
+      (`${lead.first_name} ${lead.last_name}`.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      lead.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      lead.phone.includes(searchQuery);
+    
+    const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  }).sort((a, b) => {
+    const aVal = a[sortBy as keyof Lead];
+    const bVal = b[sortBy as keyof Lead];
+    
+    if (typeof aVal === 'string' && typeof bVal === 'string') {
+      return sortOrder === 'asc' ? 
+        aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    }
+    
+    if (typeof aVal === 'number' && typeof bVal === 'number') {
+      return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
+    }
+    
+    return 0;
+  });
 
   const updateLeadStatus = async (leadId: string, newStatus: string) => {
     try {
@@ -483,6 +625,232 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Enhanced Leads Management */}
+      <div className="bg-white rounded-lg shadow mt-8">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium text-gray-900">
+              Leads Management ({filteredLeads.length})
+              {selectedLeads.length > 0 && (
+                <span className="ml-2 text-sm text-blue-600">
+                  ({selectedLeads.length} selected)
+                </span>
+              )}
+            </h3>
+            
+            <div className="flex items-center space-x-2">
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Search leads..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-3 py-1 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              
+              {/* Status Filter */}
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Status</option>
+                <option value="new">New</option>
+                <option value="contacted">Contacted</option>
+                <option value="qualified">Qualified</option>
+                <option value="site_visit">Site Visit</option>
+                <option value="negotiation">Negotiation</option>
+                <option value="closed_won">Closed Won</option>
+                <option value="closed_lost">Closed Lost</option>
+              </select>
+
+              {/* Bulk Actions */}
+              {selectedLeads.length > 0 && (
+                <button
+                  onClick={handleBulkDelete}
+                  className="flex items-center px-3 py-1 text-sm text-red-600 hover:text-red-700 border border-red-300 rounded-md hover:bg-red-50"
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Delete ({selectedLeads.length})
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left">
+                  <input
+                    type="checkbox"
+                    checked={selectedLeads.length === filteredLeads.length && filteredLeads.length > 0}
+                    onChange={handleSelectAll}
+                    className="rounded border-gray-300"
+                  />
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Lead
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Budget
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Source
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Created
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredLeads.map((lead) => (
+                <tr key={lead.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedLeads.includes(lead.id)}
+                      onChange={(e) => handleSelectLead(lead.id, e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10">
+                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                          <span className="text-sm font-medium text-blue-600">
+                            {lead.first_name.charAt(0)}{lead.last_name.charAt(0)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          {lead.first_name} {lead.last_name}
+                        </div>
+                        <div className="text-sm text-gray-500">{lead.phone}</div>
+                        {lead.email && (
+                          <div className="text-sm text-gray-500">{lead.email}</div>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <select
+                      value={lead.status}
+                      onChange={(e) => handleUpdateLeadStatus(lead.id, e.target.value)}
+                      className={`text-xs font-medium px-2 py-1 rounded-full border-0 ${
+                        lead.status === 'new' ? 'bg-blue-100 text-blue-800' :
+                        lead.status === 'contacted' ? 'bg-yellow-100 text-yellow-800' :
+                        lead.status === 'qualified' ? 'bg-green-100 text-green-800' :
+                        lead.status === 'closed_won' ? 'bg-purple-100 text-purple-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      <option value="new">New</option>
+                      <option value="contacted">Contacted</option>
+                      <option value="qualified">Qualified</option>
+                      <option value="site_visit">Site Visit</option>
+                      <option value="negotiation">Negotiation</option>
+                      <option value="closed_won">Closed Won</option>
+                      <option value="closed_lost">Closed Lost</option>
+                    </select>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {lead.budget_min && lead.budget_max ? (
+                      `${formatNumberString(lead.budget_min.toString())} - ${formatNumberString(lead.budget_max.toString())}`
+                    ) : (
+                      'Not specified'
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="text-xs font-medium text-gray-500 uppercase">
+                      {lead.source.replace(/_/g, ' ')}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {formatDate(lead.created_at)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleLeadSelect(lead)}
+                        className="text-blue-600 hover:text-blue-900"
+                        title="View Details"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setLeadToDelete(lead.id);
+                          setShowDeleteConfirm(true);
+                        }}
+                        className="text-red-600 hover:text-red-900"
+                        title="Delete Lead"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          
+          {filteredLeads.length === 0 && (
+            <div className="text-center py-12">
+              <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No leads found</h3>
+              <p className="text-gray-600">
+                Try adjusting your search or filters to find leads.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">Delete Lead</h3>
+            </div>
+            <div className="px-6 py-4">
+              <p className="text-sm text-gray-600">
+                Are you sure you want to delete this lead? This action cannot be undone.
+              </p>
+            </div>
+            <div className="px-6 py-4 bg-gray-50 flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-3 space-y-3 space-y-reverse">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setLeadToDelete(null);
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => leadToDelete && handleDeleteLead(leadToDelete)}
+                className="px-4 py-2 text-sm font-medium text-black bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Delete Lead
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Chatbot Widget */}
       <ChatbotWidget
