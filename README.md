@@ -41,7 +41,7 @@ LeadGenie AI is an advanced AI-powered chatbot and mini-CRM system designed spec
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/your-username/leadgenie-ai.git
+git clone https://github.com/tarvezllc/leadgenie-ai.git
 cd leadgenie-ai
 ```
 
@@ -135,7 +135,7 @@ Visit `http://localhost:3000` to see the dashboard.
 // lib/ai-service.ts
 const aiService = AIService.getInstance();
 
-// Customize AI personality
+// CustomizeAI personality
 const systemPrompt = `You are Sarah, a professional real estate agent assistant...`;
 
 // Configure qualification questions
@@ -153,171 +153,5 @@ const qualificationQuestions = [
 <ChatbotWidget
   userId={userId}
   properties={properties}
-  onLeadCreated={handleLeadCreated}
-  className="custom-styles"
-/>
+
 ```
-
-### WhatsApp Webhook Setup
-1. **Configure Twilio**: Set webhook URL to `/api/whatsapp/webhook`
-2. **Test Messages**: Send test messages to verify integration
-3. **Monitor Logs**: Check webhook logs for errors
-
-## 🤖 AI Features
-
-### Lead Qualification
-- **Budget Detection**: Extract price ranges from conversations
-- **Location Preferences**: Identify preferred areas
-- **Property Types**: Determine property preferences
-- **Timeline**: Understand urgency and move-in dates
-- **Contact Preferences**: Learn communication preferences
-
-### Property Matching
-- **Smart Suggestions**: AI recommends relevant properties
-- **Scoring Algorithm**: Rate property-lead compatibility
-- **Feature Matching**: Match based on requirements
-- **Location Optimization**: Consider commute and preferences
-
-### Follow-up Automation
-- **Personalized Messages**: AI generates custom follow-ups
-- **Timing Optimization**: Send messages at optimal times
-- **Multi-channel**: Email, WhatsApp, and SMS options
-- **A/B Testing**: Test different message variations
-
-## 📊 Analytics
-
-### Key Metrics
-- **Lead Volume**: Total leads captured
-- **Conversion Rate**: Lead to appointment rate
-- **Response Time**: Average response to leads
-- **Qualification Rate**: Percentage of qualified leads
-- **Revenue Impact**: Closed deals and commission
-
-### Dashboard Views
-- **Overview**: High-level metrics and trends
-- **Lead Pipeline**: Stage-by-stage progression
-- **Performance**: Individual agent metrics
-- **Properties**: Listing performance and views
-
-## 🔄 Automation Workflows
-
-### n8n Integration
-1. **Lead Follow-up**: Automated welcome messages
-2. **Daily Nurturing**: Regular check-ins with leads
-3. **Property Alerts**: Notify leads of new matches
-4. **Appointment Reminders**: Automated scheduling
-
-### Workflow Examples
-- **New Lead**: Welcome email → Schedule follow-up → Property suggestions
-- **Stale Lead**: Nurturing message → Re-engagement campaign
-- **Qualified Lead**: Priority alert → Agent notification → Property tour
-
-## 🚀 Deployment
-
-### Vercel Deployment
-1. **Connect Repository**: Link GitHub to Vercel
-2. **Set Environment Variables**: Add all required keys
-3. **Deploy**: Automatic deployment on push
-4. **Configure Domain**: Set up custom domain
-
-### Environment Variables
-```env
-# Production Environment Variables
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-OPENAI_API_KEY=sk-your_openai_key
-TWILIO_ACCOUNT_SID=your_twilio_sid
-TWILIO_AUTH_TOKEN=your_twilio_token
-TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
-NEXTAUTH_SECRET=your_nextauth_secret
-NEXTAUTH_URL=https://your-domain.com
-```
-
-## 🧪 Testing
-
-### Unit Tests
-```bash
-npm run test
-```
-
-### Integration Tests
-```bash
-npm run test:integration
-```
-
-### E2E Tests
-```bash
-npm run test:e2e
-```
-
-## 📈 Performance
-
-### Optimization Features
-- **Code Splitting**: Automatic bundle optimization
-- **Image Optimization**: Next.js image optimization
-- **Caching**: Supabase query caching
-- **CDN**: Vercel edge network
-
-### Monitoring
-- **Error Tracking**: Built-in error monitoring
-- **Performance Metrics**: Core Web Vitals tracking
-- **Database Monitoring**: Supabase performance insights
-- **API Monitoring**: Response time tracking
-
-## 🔒 Security
-
-### Data Protection
-- **Encryption**: All data encrypted in transit and at rest
-- **Authentication**: Supabase Auth with JWT tokens
-- **Authorization**: Row-level security policies
-- **GDPR Compliance**: Full data protection compliance
-
-### Best Practices
-- **Environment Variables**: Never commit secrets
-- **Input Validation**: Sanitize all user inputs
-- **Rate Limiting**: Prevent API abuse
-- **Audit Logging**: Track all data access
-
-## 🤝 Contributing
-
-### Development Setup
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
-
-### Code Standards
-- **TypeScript**: Strict type checking
-- **ESLint**: Code quality enforcement
-- **Prettier**: Code formatting
-- **Husky**: Pre-commit hooks
-
-## 📞 Support
-
-### Documentation
-- **API Docs**: `/docs/api`
-- **Component Library**: `/docs/components`
-- **Deployment Guide**: `/docs/deployment`
-
-### Community
-- **Discord**: Join our community
-- **GitHub Issues**: Report bugs and feature requests
-- **Email Support**: support@leadgenieai.com
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **OpenAI**: For providing the GPT-4o-mini API
-- **Supabase**: For the excellent backend platform
-- **Vercel**: For seamless deployment
-- **Twilio**: For WhatsApp integration
-- **n8n**: For workflow automation
-
----
-
-**Built with ❤️ for real estate agents who want to scale their business with AI.**
