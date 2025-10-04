@@ -1,5 +1,27 @@
 import { LeadQualificationData, ChatMessage, QualificationQuestion } from '@/types';
 
+export interface MarketContext {
+  currentMarket: string;
+  marketTrends: MarketTrendData;
+  localInsights: LocalInsights;
+}
+
+export interface MarketTrendData {
+  avgDaysOnMarket: number;
+  medianPrice: number;
+  inventoryLevel: 'low' | 'moderate' | 'high';
+  marketType: 'buyers' | 'sellers' | 'balanced';
+  seasonalAdvice: string;
+}
+
+export interface LocalInsights {
+  popularNeighborhoods: string[];
+  upcomingDevelopments: string[];
+  schoolDistricts: string[];
+  amenities: string[];
+  commuteHubs: string[];
+}
+
 export class AIService {
   private static instance: AIService;
   
@@ -18,9 +40,12 @@ export class AIService {
       userInfo?: any;
       properties?: any[];
       qualificationData?: LeadQualificationData;
+      location?: string;
     }
   ): Promise<string> {
-    const systemPrompt = this.buildSystemPrompt(context);
+    // Get market context for intelligent responses
+    const marketContext = await this.getMarketContext(context.location);
+    const systemPrompt = this.buildSystemPrompt(context, marketContext);
     
     const formattedMessages = [
       { role: 'system', content: systemPrompt },
@@ -350,12 +375,86 @@ export class AIService {
     }).slice(0, 3);
   }
 
-  private buildSystemPrompt(context: any): string {
-    return `You are Sarah, a friendly and helpful real estate assistant. You're here to help people find their perfect property.
+  // Market Intelligence Methods
+  async getMarketContext(location?: string): Promise<MarketContext> {
+    // For now, return mock data - in production this would query real estate APIs
+    const mockMarket: MarketContext = {
+      currentMarket: location || 'San Francisco Bay Area',
+      marketTrends: {
+        avgDaysOnMarket: 28,
+        medianPrice: 850000,
+        inventoryLevel: 'low',
+        marketType: 'balanced',
+        seasonalAdvice: 'Spring is prime buying season! Inventory typically increases 15% and competition heats up.'
+      },
+      localInsights: {
+        popularNeighborhoods: ['Downtown', 'Mission District', 'Castro', 'Noe Valley', 'Pacific Heights'],
+        upcomingDevelopments: ['Central Park Towers (2024)', 'Bayview Heights Redevelopment', 'Transit Village Phase 2'],
+        schoolDistricts: ['San Francisco Unified', 'Private schools: Sacred Heart, UHS'],
+        amenities: ['Golden Gate Park', 'SFMoMA', 'Chase Center', 'Baker Beach'],
+        commuteHubs: ['Caltrain', 'BART', 'Muni Metro', 'Ferry Building']
+      }
+    };
+    
+    return mockMarket;
+  }
+
+  getMarketInsight(context: MarketContext, userQuery: string): string {
+    const trends = context.marketTrends;
+    const insights = context.localInsights;
+    
+    // Generate contextual advice based on current market
+    if (userQuery.toLowerCase().includes('market')) {
+      if (trends.marketType === 'sellers') {
+        return `Great time to sell! We're in a seller's market with properties averaging ${trends.avgDaysOnMarket} days on market and low inventory.`;
+      } else if (trends.marketType === 'buyers') {
+        return `Buyer-friendly market! With ${trends.inventoryLevel} inventory, you have more negotiating power and selection.`;
+      } else {
+        return `Balanced market conditions! Properties are moving at a healthy pace with fair pricing across most neighborhoods.`;
+      }
+    }
+    
+    if (userQuery.toLowerCase().includes('neighborhood')) {
+      return `Popular areas right now include ${insights.popularNeighborhoods.slice(0, 3).join(', ')} - each offers unique lifestyle options worth exploring!`;
+    }
+    
+    if (userQuery.toLowerCase().includes('investment') || userQuery.toLowerCase().includes('roi')) {
+      return `Smart thinking! With median prices at $${trends.medianPrice.toLocaleString()}, consider neighborhoods near upcoming developments like ${insights.upcomingDevelopments[0]}.`;
+    }
+    
+    return '';
+  }
+
+  private buildSystemPrompt(context: any, marketContext: MarketContext): string {
+    const trends = marketContext.marketTrends;
+    const insights = marketContext.localInsights;
+    
+    return `You are Sarah, an experienced real estate advisor with deep local market knowledge. You help clients make informed property decisions.
+
+MARKET EXPERTISE (CURRENT ${marketContext.currentMarket} MARKET):
+- Market Type: ${trends.marketType} market - ${trends.averageDaysOnMarket ? trends.avgDaysOnMarket : 28} days average on market
+- Median Price: $${trends.medianPrice.toLocaleString()}
+- Inventory Level: ${trends.inventoryLevel}
+- Seasonal Advice: ${trends.seasonalAdvice}
+
+LOCAL INSIGHTS:
+- Popular Neighborhoods: ${insights.popularNeighborhoods.join(', ')}
+- Upcoming Developments: ${insights.upcomingDevelopments.join(', ')}
+- Top School Districts: ${insights.schoolDistricts.join(', ')}
+- Key Amenities: ${insights.amenities.join(', ')}
+- Commute Options: ${insights.commuteHubs.join(', ')}
+
+EXPERTISE AREAS:
+- You have insider knowledge of local market conditions
+- You understand pricing trends, inventory levels, and seasonal patterns
+- You know neighborhood nuances, school districts, and amenities
+- You can advise on investment potential and market timing
+- Share specific market data when relevant (median prices, days on market, inventory levels)
 
 PERSONALITY:
 - Warm, conversational, and helpful
-- Like talking to a knowledgeable friend
+- Like talking to a knowledgeable friend who happens to be a real estate expert
+- Share market insights naturally when relevant
 - Ask questions naturally, not like a form
 - Be encouraging and supportive
 
@@ -368,27 +467,28 @@ Instead of rigid questions, have natural conversations about:
 CONVERSATION STYLE:
 - Talk like a real person, not a robot
 - Ask follow-up questions based on what they say
-- Share relevant property info when you have it
+- Share relevant market insights and property info when you have it
 - Be flexible - if they mention budget/location/type in passing, acknowledge it
 - Don't force specific questions if they're already sharing info
+- Reference current market conditions naturally ("In this market..." "Given today's inventory levels...")
 
-EXAMPLES OF NATURAL CONVERSATION:
-- "That sounds great! What's your budget range?" (not "Please provide your budget")
-- "Oh nice! What area are you thinking?" (not "What is your preferred location?")
-- "Perfect! When are you looking to move?" (not "What is your move-in date?")
+EXAMPLES OF ENHANCED CONVERSATION:
+- "That sounds great! What's your budget range? Median prices are around $${trends.medianPrice.toLocaleString()} here, so I can suggest neighborhoods that fit."
+- "Oh nice! What area are you thinking? ${insights.popularNeighborhoods.slice(0).join(' and ')} are especially hot right now!"
+- "Perfect! When are you looking to move? ${trends.seasonalAdvice}"
 
 RESPONSE GUIDELINES:
-- Keep responses short and conversational (1-2 sentences)
+- Keep responses conversational (1-2 sentences typically)
 - Use natural language, not formal business speak
 - Ask one thing at a time, but be flexible
 - If they share multiple things, acknowledge and ask follow-ups
-- Stay focused on real estate but be conversational
+- Insert relevant market data naturally ("A typical condo in this area...", "Competition is ${trends.inventoryLevel === 'low' ? 'tough with low inventory' : 'moderate'} these days")
 - Use emojis occasionally to keep it friendly
 - If they go off-topic, gently redirect: "That's interesting! So about your property search..."
 
 ${context.userInfo ? `You're representing ${context.userInfo.company_name || 'our real estate team'}.` : ''}
 ${context.properties?.length ? `You have ${context.properties.length} properties to suggest when relevant.` : ''}
 
-Remember: Make this feel like chatting with a helpful friend who knows real estate, not filling out a form.`;
+Remember: You're not just a chatbot - you're a knowledgeable market expert who happens to chat naturally. Share insights that position you as the local expert!`;
   }
 }
