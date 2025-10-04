@@ -1,0 +1,336 @@
+{
+  "name": "LeadGenie AI - Daily Lead Nurturing",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "value": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://your-app.vercel.app/api/leads",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "new"
+            },
+            {
+              "name": "created_before",
+              "value": "={{ new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-new-leads",
+      "name": "Get New Leads",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://your-app.vercel.app/api/leads",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "contacted"
+            },
+            {
+              "name": "last_contacted_before",
+              "value": "={{ new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-stale-leads",
+      "name": "Get Stale Leads",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 500]
+    },
+    {
+      "parameters": {
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "gpt-4o-mini"
+            },
+            {
+              "name": "messages",
+              "value": "=[{\"role\": \"system\", \"content\": \"You are Sarah, a professional real estate agent. Generate a personalized nurturing message for a lead who hasn't been contacted recently.\"}, {\"role\": \"user\", \"content\": \"Generate a nurturing message for: Name: {{ $json.first_name }} {{ $json.last_name }}, Last contacted: {{ $json.last_contacted_at }}, Budget: ${{ $json.budget_min }} - ${{ $json.budget_max }}, Locations: {{ $json.preferred_locations }}, Transaction: {{ $json.transaction_type }}\"}]"
+            },
+            {
+              "name": "max_tokens",
+              "value": "250"
+            },
+            {
+              "name": "temperature",
+              "value": "0.8"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "generate-nurturing-message",
+      "name": "Generate Nurturing Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.source }}",
+              "operation": "equal",
+              "value2": "website_chat"
+            }
+          ]
+        }
+      },
+      "id": "if-email-lead",
+      "name": "If Email Lead",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.source }}",
+              "operation": "equal",
+              "value2": "whatsapp"
+            }
+          ]
+        }
+      },
+      "id": "if-whatsapp-lead",
+      "name": "If WhatsApp Lead",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [900, 500]
+    },
+    {
+      "parameters": {
+        "fromEmail": "sarah@premierrealtygroup.com",
+        "toEmail": "={{ $json.email || 'lead@premierrealtygroup.com' }}",
+        "subject": "Following Up on Your Property Search - Premier Realty Group",
+        "message": "={{ $json.choices[0].message.content }}",
+        "options": {
+          "replyTo": "sarah@premierrealtygroup.com"
+        }
+      },
+      "id": "send-nurturing-email",
+      "name": "Send Nurturing Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://api.twilio.com/2010-04-01/Accounts/{{ $credentials.twilio.accountSid }}/Messages.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "twilioApi",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "From",
+              "value": "whatsapp:+14155238886"
+            },
+            {
+              "name": "To",
+              "value": "=whatsapp:{{ $json.phone }}"
+            },
+            {
+              "name": "Body",
+              "value": "={{ $json.choices[0].message.content }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-nurturing-whatsapp",
+      "name": "Send Nurturing WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "url": "https://your-app.vercel.app/api/leads/{{ $json.id }}/interactions",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{ $json.user_id }}"
+            },
+            {
+              "name": "interaction_type",
+              "value": "email"
+            },
+            {
+              "name": "content",
+              "value": "Automated nurturing email sent"
+            },
+            {
+              "name": "direction",
+              "value": "outbound"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-interaction",
+      "name": "Log Interaction",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1340, 300]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get New Leads",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Stale Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get New Leads": {
+      "main": [
+        [
+          {
+            "node": "Generate Nurturing Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Stale Leads": {
+      "main": [
+        [
+          {
+            "node": "Generate Nurturing Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Nurturing Message": {
+      "main": [
+        [
+          {
+            "node": "If Email Lead",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If WhatsApp Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Email Lead": {
+      "main": [
+        [
+          {
+            "node": "Send Nurturing Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If WhatsApp Lead": {
+      "main": [
+        [
+          {
+            "node": "Send Nurturing WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Nurturing Email": {
+      "main": [
+        [
+          {
+            "node": "Log Interaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Nurturing WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Log Interaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-03-15T10:00:00.000Z",
+  "versionId": "1"
+}
