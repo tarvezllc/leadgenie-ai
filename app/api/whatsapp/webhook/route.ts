@@ -3,10 +3,17 @@ import twilio from 'twilio';
 import { supabase } from '@/lib/supabase';
 import { AIService } from '@/lib/ai-service';
 
-const client = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
+// Initialize Twilio client only if credentials are available
+function getTwilioClient() {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  
+  if (!accountSid || !authToken) {
+    throw new Error('Twilio credentials not configured');
+  }
+  
+  return twilio(accountSid, authToken);
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -236,6 +243,7 @@ async function updateLeadQualificationData(leadId: string, data: any) {
 
 async function sendWhatsAppMessage(to: string, from: string, message: string) {
   try {
+    const client = getTwilioClient();
     await client.messages.create({
       body: message,
       from: to, // This should be your Twilio WhatsApp number
